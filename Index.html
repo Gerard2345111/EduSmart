@@ -231,7 +231,7 @@ async function postListing(){
 /* PAYSTACK */
 function pay(listingId){
   PaystackPop.setup({
-    key:'YOUR_PAYSTACK_PUBLIC_KEY',
+    key:'pk_test_31a195aae362634a327a24039fdbe82742aa7a23',
     email:'user@homevia.com',
     amount:300000,
     callback:r=>verify(r.reference,listingId)
