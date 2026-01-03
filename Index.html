@@ -3,82 +3,104 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sign Up — Homevia</title>
+<title>Homevia — Rentals & Housing</title>
+
+<!-- Google Maps -->
+<script defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDz1PwJ9hLUBKoaVtT-OJnBWZFTAxXnZVc&callback=initMap"></script>
+
+<!-- Paystack -->
+<script src="https://js.paystack.co/v1/inline.js"></script>
 
 <style>
-:root{
-  --primary:#0f172a;
-  --accent:#22c55e;
-  --bg:#f8fafc;
-  --card:#ffffff;
-}
-*{box-sizing:border-box;font-family:system-ui}
-body{
-  margin:0;
-  background:var(--bg);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  height:100vh;
-}
-.card{
-  background:var(--card);
-  width:100%;
-  max-width:420px;
-  padding:2rem;
-  border-radius:18px;
-  box-shadow:0 20px 40px rgba(0,0,0,.08);
-}
-h2{text-align:center;margin-bottom:1.5rem}
-input,button{
-  width:100%;
-  padding:14px;
-  margin-bottom:1rem;
-  border-radius:12px;
-  border:1px solid #ddd;
-}
-button{
-  background:var(--accent);
-  color:#fff;
-  border:none;
-  font-weight:600;
-  cursor:pointer;
-}
-button:disabled{opacity:.6}
-small{text-align:center;display:block}
-.error{color:red;text-align:center}
-.success{color:green;text-align:center}
+body{margin:0;font-family:system-ui;background:#f8fafc}
+header{background:#0f172a;color:#fff;padding:1rem;display:flex;justify-content:space-between}
+nav button{background:none;border:none;color:#fff;margin-left:10px;font-weight:600}
+.card{background:#fff;padding:1.5rem;border-radius:14px;margin-bottom:1rem;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+main{max-width:1100px;margin:auto;padding:1rem}
+input,select,button{width:100%;padding:12px;margin-top:8px;border-radius:10px;border:1px solid #ddd}
+button{background:#22c55e;color:#fff;border:none;font-weight:600}
+.hidden{display:none}
+#map{height:350px;border-radius:12px}
+.listing{border-bottom:1px solid #eee;padding:10px 0}
+.badge{background:#22c55e;color:#fff;padding:4px 8px;border-radius:999px;font-size:12px}
 </style>
 </head>
 
 <body>
 
-<div class="card">
-  <h2>🏠 Create Account</h2>
+<header>
+  <h2>🏠 Homevia</h2>
+  <nav>
+    <button onclick="show('home')">Home</button>
+    <button onclick="show('post')">Post</button>
+    <button onclick="show('auth')">Login / Signup</button>
+  </nav>
+</header>
 
+<main>
+
+<!-- AUTH -->
+<div id="auth" class="card">
+  <h3>Login</h3>
+  <input id="loginEmail" placeholder="Email">
+  <input id="loginPassword" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+
+  <hr>
+
+  <h3>Create Account</h3>
   <input id="name" placeholder="Full Name">
-  <input id="email" type="email" placeholder="Email address">
+  <input id="email" placeholder="Email">
   <input id="password" type="password" placeholder="Password">
+  <button onclick="signup()">Sign Up</button>
 
-  <button onclick="signup()">Create Account</button>
-
-  <p id="msg"></p>
-
-  <small>Already have an account?
-    <a href="login.html">Login</a>
-  </small>
+  <p id="msg" style="color:red"></p>
 </div>
 
+<!-- HOME -->
+<div id="home" class="hidden">
+  <div class="card">
+    <h3>📍 Homes Near You</h3>
+    <div id="map"></div>
+  </div>
+
+  <div class="card">
+    <h3>🏘 Listings</h3>
+    <div id="listings"></div>
+  </div>
+</div>
+
+<!-- POST -->
+<div id="post" class="card hidden">
+  <h3>Post Property</h3>
+  <input id="title" placeholder="Title">
+  <input id="price" placeholder="Price">
+  <input id="location" placeholder="Location">
+  <select id="ptype">
+    <option value="rent">Rent</option>
+    <option value="sale">Sale</option>
+  </select>
+  <button onclick="postListing()">Submit</button>
+</div>
+
+</main>
+
 <script>
+/* ================= CONFIG ================= */
 const API = "https://homevia-backend.onrender.com/api";
+let map, markers=[];
 
+/* ================= ROUTER ================= */
+function show(id){
+  document.querySelectorAll("main > div").forEach(d=>d.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+}
+
+/* ================= SIGN UP ================= */
 async function signup(){
-  const msg = document.getElementById("msg");
-  msg.textContent = "";
-
   const res = await fetch(`${API}/auth/register`,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
     body:JSON.stringify({
       name:name.value,
       email:email.value,
@@ -87,20 +109,113 @@ async function signup(){
   });
 
   const data = await res.json();
-
-  if(!res.ok){
-    msg.textContent = data.message || "Signup failed";
-    msg.className = "error";
-    return;
-  }
-
-  msg.textContent = "Account created! Redirecting...";
-  msg.className = "success";
-
-  setTimeout(()=>{
-    window.location.href = "login.html";
-  },1500);
+  msg.textContent = data.message || "Account created. Login now.";
 }
+
+/* ================= LOGIN ================= */
+async function login(){
+  const res = await fetch(`${API}/auth/login`,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      email:loginEmail.value,
+      password:loginPassword.value
+    })
+  });
+
+  const data = await res.json();
+  if(!res.ok){ msg.textContent=data.message; return; }
+
+  localStorage.token = data.token;
+  show("home");
+  loadListings();
+}
+
+/* ================= MAP ================= */
+function initMap(){
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      map=new google.maps.Map(document.getElementById("map"),{
+        center:{lat:pos.coords.latitude,lng:pos.coords.longitude},
+        zoom:13
+      });
+    },
+    ()=>{
+      map=new google.maps.Map(document.getElementById("map"),{
+        center:{lat:6.5244,lng:3.3792},
+        zoom:12
+      });
+    }
+  );
+}
+
+/* ================= LISTINGS ================= */
+async function loadListings(){
+  const res = await fetch(`${API}/listings`);
+  const data = await res.json();
+  listings.innerHTML="";
+  markers.forEach(m=>m.setMap(null)); markers=[];
+
+  data.forEach(l=>{
+    listings.innerHTML+=`
+      <div class="listing">
+        <b>${l.title}</b>
+        ${l.premium?'<span class="badge">Premium</span>':''}
+        <p>${l.location}</p>
+        <b>₦${l.price}</b>
+        ${!l.premium?`<button onclick="pay('${l._id}')">Upgrade</button>`:''}
+      </div>
+    `;
+    if(l.lat&&l.lng){
+      markers.push(new google.maps.Marker({position:{lat:l.lat,lng:l.lng},map}));
+    }
+  });
+}
+
+/* ================= POST ================= */
+async function postListing(){
+  await fetch(`${API}/listings`,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer "+localStorage.token
+    },
+    body:JSON.stringify({
+      title:title.value,
+      price:price.value,
+      location:location.value,
+      type:ptype.value
+    })
+  });
+  alert("Posted");
+  show("home");
+  loadListings();
+}
+
+/* ================= PAYSTACK ================= */
+function pay(id){
+  PaystackPop.setup({
+    key:"pk_test_31a195aae362634a327a24039fdbe82742aa7a23",
+    email:"user@homevia.com",
+    amount:300000,
+    currency:"NGN",
+    callback:r=>verifyPayment(r.reference,id)
+  }).openIframe();
+}
+
+async function verifyPayment(ref,id){
+  await fetch(`${API}/listings/verify-payment`,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer "+localStorage.token
+    },
+    body:JSON.stringify({reference:ref,listing_id:id})
+  });
+  loadListings();
+}
+
+loadListings();
 </script>
 
 </body>
