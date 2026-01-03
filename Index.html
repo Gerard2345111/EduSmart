@@ -3,261 +3,104 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Homevia — Smart Housing</title>
-
-<!-- Google Maps -->
-<script defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDz1PwJ9hLUBKoaVtT-OJnBWZFTAxXnZVc&callback=initMap"></script>
-
-<!-- Paystack -->
-<script src="https://js.paystack.co/v1/inline.js"></script>
-
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>Sign Up — Homevia</title>
 
 <style>
 :root{
   --primary:#0f172a;
   --accent:#22c55e;
-  --danger:#ef4444;
   --bg:#f8fafc;
   --card:#ffffff;
 }
 *{box-sizing:border-box;font-family:system-ui}
-body{margin:0;background:var(--bg)}
-header{
-  background:var(--primary);
-  color:#fff;
-  padding:1rem;
+body{
+  margin:0;
+  background:var(--bg);
   display:flex;
-  justify-content:space-between;
   align-items:center;
+  justify-content:center;
+  height:100vh;
 }
-nav button{
-  background:none;border:none;color:#fff;
-  margin-left:1rem;font-weight:600;cursor:pointer
-}
-main{max-width:1200px;margin:auto;padding:1rem}
 .card{
   background:var(--card);
-  border-radius:16px;
-  padding:1rem;
+  width:100%;
+  max-width:420px;
+  padding:2rem;
+  border-radius:18px;
+  box-shadow:0 20px 40px rgba(0,0,0,.08);
+}
+h2{text-align:center;margin-bottom:1.5rem}
+input,button{
+  width:100%;
+  padding:14px;
   margin-bottom:1rem;
-  box-shadow:0 10px 30px rgba(0,0,0,.06)
+  border-radius:12px;
+  border:1px solid #ddd;
 }
-.grid{display:grid;gap:1rem}
-@media(min-width:900px){
-  .grid{grid-template-columns:2fr 1fr}
+button{
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  font-weight:600;
+  cursor:pointer;
 }
-input,select,button{
-  width:100%;padding:12px;margin-top:.5rem;
-  border-radius:10px;border:1px solid #ddd
-}
-button{background:var(--accent);color:#fff;border:none;font-weight:600}
-.hidden{display:none}
-#map{height:400px;border-radius:16px}
-.listing{border-bottom:1px solid #eee;padding:.8rem 0}
-.badge{background:var(--accent);color:#fff;padding:4px 8px;border-radius:999px;font-size:12px}
-.danger{background:var(--danger)}
+button:disabled{opacity:.6}
+small{text-align:center;display:block}
+.error{color:red;text-align:center}
+.success{color:green;text-align:center}
 </style>
 </head>
 
 <body>
 
-<header>
-  <h2>🏠 Homevia</h2>
-  <nav>
-    <button onclick="show('home')">Home</button>
-    <button onclick="show('pricing')">Pricing</button>
-    <button onclick="show('post')">Post</button>
-    <button onclick="show('admin')">Admin</button>
-    <button onclick="show('login')">Login</button>
-  </nav>
-</header>
+<div class="card">
+  <h2>🏠 Create Account</h2>
 
-<main>
-
-<!-- LOGIN -->
-<div id="login" class="card hidden">
-  <h3>Login</h3>
-  <input id="email" placeholder="Email">
+  <input id="name" placeholder="Full Name">
+  <input id="email" type="email" placeholder="Email address">
   <input id="password" type="password" placeholder="Password">
-  <button onclick="login()">Continue</button>
+
+  <button onclick="signup()">Create Account</button>
+
+  <p id="msg"></p>
+
+  <small>Already have an account?
+    <a href="login.html">Login</a>
+  </small>
 </div>
-
-<!-- HOME -->
-<div id="home">
-  <div class="grid">
-    <div class="card">
-      <h3>📍 Homes Near You</h3>
-      <div id="map"></div>
-    </div>
-    <div class="card">
-      <h3>🔍 Filters</h3>
-      <button onclick="loadListings()">Apply</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h3>🏘 Listings</h3>
-    <div id="listings"></div>
-  </div>
-</div>
-
-<!-- POST -->
-<div id="post" class="card hidden">
-  <h3>Post Property</h3>
-  <input id="title" placeholder="Title">
-  <input id="price" placeholder="Price">
-  <input id="location" placeholder="Location">
-  <select id="ptype">
-    <option value="rent">Rent</option>
-    <option value="sale">Sale</option>
-  </select>
-  <button onclick="postListing()">Submit</button>
-</div>
-
-<!-- PRICING -->
-<div id="pricing" class="card hidden">
-  <h3>💳 Pricing</h3>
-  <p><b>Free:</b> 1 listing</p>
-  <p><b>Premium:</b> ₦3,000 / listing</p>
-</div>
-
-<!-- ADMIN -->
-<div id="admin" class="hidden">
-  <div class="card">
-    <h3>📊 Analytics</h3>
-    <canvas id="chart"></canvas>
-  </div>
-</div>
-
-</main>
 
 <script>
 const API = "https://homevia-backend.onrender.com/api";
-let map, markers=[];
 
-/* ROUTER */
-function show(id){
-  document.querySelectorAll('main > div').forEach(d=>d.classList.add('hidden'));
-  document.getElementById(id).classList.remove('hidden');
-}
+async function signup(){
+  const msg = document.getElementById("msg");
+  msg.textContent = "";
 
-/* LOGIN */
-async function login(){
-  const res = await fetch(`${API}/auth/login`,{
+  const res = await fetch(`${API}/auth/register`,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
-      email: email.value,
-      password: password.value
+      name:name.value,
+      email:email.value,
+      password:password.value
     })
   });
 
   const data = await res.json();
 
-  if(!data.token){
-    alert(data.msg || "Login failed");
+  if(!res.ok){
+    msg.textContent = data.message || "Signup failed";
+    msg.className = "error";
     return;
   }
 
-  localStorage.setItem("token", data.token);
-  alert("Logged in");
-  show('home');
+  msg.textContent = "Account created! Redirecting...";
+  msg.className = "success";
+
+  setTimeout(()=>{
+    window.location.href = "login.html";
+  },1500);
 }
-
-/* MAP */
-function initMap(){
-  navigator.geolocation.getCurrentPosition(
-    pos=>{
-      map=new google.maps.Map(document.getElementById("map"),{
-        center:{lat:pos.coords.latitude,lng:pos.coords.longitude},
-        zoom:13
-      });
-    },
-    ()=>{
-      map=new google.maps.Map(document.getElementById("map"),{
-        center:{lat:6.5244,lng:3.3792},
-        zoom:12
-      });
-    }
-  );
-}
-
-/* LISTINGS */
-async function loadListings(){
-  listings.innerHTML="Loading...";
-  const res = await fetch(`${API}/listings`);
-  const data = await res.json();
-
-  listings.innerHTML="";
-  markers.forEach(m=>m.setMap(null)); markers=[];
-
-  data.forEach(l=>{
-    listings.innerHTML+=`
-      <div class="listing">
-        <b>${l.title}</b>
-        ${l.premium?'<span class="badge">Premium</span>':''}
-        <p>${l.location}</p>
-        <b>₦${l.price}</b>
-        ${!l.premium?`<button onclick="pay('${l._id}')">Upgrade</button>`:''}
-      </div>`;
-  });
-}
-
-/* POST */
-async function postListing(){
-  await fetch(`${API}/listings`,{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'Authorization':'Bearer '+localStorage.getItem("token")
-    },
-    body:JSON.stringify({
-      title:title.value,
-      price:price.value,
-      location:location.value,
-      type:ptype.value
-    })
-  });
-
-  alert("Submitted");
-  show('home');
-  loadListings();
-}
-
-/* PAYSTACK */
-function pay(listingId){
-  PaystackPop.setup({
-    key:'pk_test_31a195aae362634a327a24039fdbe82742aa7a23',
-    email:'user@homevia.com',
-    amount:300000,
-    callback:r=>verify(r.reference, listingId)
-  }).openIframe();
-}
-
-async function verify(ref,id){
-  await fetch(`${API}/paystack/verify`,{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'Authorization':'Bearer '+localStorage.getItem("token")
-    },
-    body:JSON.stringify({reference:ref, listingId:id})
-  });
-  loadListings();
-}
-
-/* ADMIN CHART */
-new Chart(document.getElementById('chart'),{
-  type:'line',
-  data:{
-    labels:['Mon','Tue','Wed','Thu','Fri'],
-    datasets:[{label:'Listings',data:[4,7,10,12,18]}]
-  }
-});
-
-loadListings();
 </script>
 
 </body>
